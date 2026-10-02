@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "steam-cfg-porter/api/pb;pb";
+
+service ConfigService {
+    rpc GetConfig (GetConfigRequest) returns (GetConfigResponse);
+
+    rpc SaveConfig (SaveConfigRequest) returns (SaveConfigResponse);
+
+    rpc DeleteConfig (DeleteConfigRequest) returns (DeleteConfigResponse);
+}
+
+message ConfigModel {
+    string id = 1;
+    string game = 2;
+    string name = 3;
+    string author_nickname = 4;
+    bool is_global = 5;
+    int64 user_id = 6;
+    string config_body = 7;
+}
+
+message GetConfigRequest {
+    string config_id = 1;
+    string game = 2;
+    string author_nickname = 3;
+}
+
+message GetConfigResponse {
+    ConfigModel config = 1;
+}
+
+message SaveConfigRequest {
+    string game = 1;
+    string name = 2;
+    string author_nickname = 3;
+    bool is_global = 4;
+    int64 user_id = 5;
+    string config_body = 6;
+}
+
+message SaveConfigResponse {
+    string config_id = 1;
+    bool success = 2;
+}
+
+message DeleteConfigRequest {
+    string config_id = 1;
+    int64 user_id = 2;
+}
+
+message DeleteConfigResponse {
+    bool success = 1;
+}
