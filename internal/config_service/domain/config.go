@@ -11,6 +11,7 @@ var (
 	ErrCantFindPath           = errors.New("cannot find path of game config")
 	ErrConfigAlreadyInstalled = errors.New("config already installed")
 	ErrConfigAlreadyExists    = errors.New("config already exists in the database")
+	ErrCacheMiss              = errors.New("cache miss")
 )
 
 type Config struct {
