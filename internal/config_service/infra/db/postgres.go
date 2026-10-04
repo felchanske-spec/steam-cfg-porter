@@ -12,6 +12,7 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
+//go:embed../migrations/*.sql
 var embedMigrations embed.FS
 
 func InitPostgres(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
