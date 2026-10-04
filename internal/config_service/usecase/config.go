@@ -46,6 +46,9 @@ func (uc *ConfigUseCase) GetConfig(ctx context.Context, id string, game string, 
 
 	cachedConfig, err := uc.redisRepo.GetConfig(ctx, cacheKey)
 	if err == nil {
+		if cachedConfig == nil {
+			return nil, domain.ErrConfigNotFound
+		}
 		if errWrite := os.WriteFile(localPath, []byte(cachedConfig.ConfigBody), 0644); errWrite != nil {
 			return nil, errWrite
 		}
