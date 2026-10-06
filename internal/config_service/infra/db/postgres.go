@@ -3,17 +3,15 @@ package db
 import (
 	"context"
 	"database/sql"
-	"embed"
 	"fmt"
 	"log"
+	"steam-cfg-portet/internal/config_service/infra/migrations"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 )
-
-//go:embed../migrations/*.sql
-var embedMigrations embed.FS
 
 func InitPostgres(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	gooseDb, err := sql.Open("pgx", dsn)
@@ -22,13 +20,13 @@ func InitPostgres(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	}
 	defer gooseDb.Close()
 
-	goose.SetBaseFS(embedMigrations)
+	goose.SetBaseFS(migrations.EmbedMigrations)
 	if err := goose.SetDialect("postgres"); err != nil {
 		return nil, fmt.Errorf("failed to set goose dialect: %w", err)
 	}
 
 	log.Println("[Goose] Running database migrations...")
-	if err := goose.Up(gooseDb, "../migrations"); err != nil {
+	if err := goose.Up(gooseDb, "."); err != nil {
 		return nil, fmt.Errorf("goose up failed: %w", err)
 	}
 	log.Println("[Goose] Migrations applied successfully!")
