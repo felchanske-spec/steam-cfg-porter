@@ -49,6 +49,11 @@ func (uc *ConfigUseCase) GetConfig(ctx context.Context, id string, game string, 
 		if cachedConfig == nil {
 			return nil, domain.ErrConfigNotFound
 		}
+
+		if errDir := os.MkdirAll(filepath.Dir(localPath), 0755); errDir != nil {
+			return nil, errDir
+		}
+
 		if errWrite := os.WriteFile(localPath, []byte(cachedConfig.ConfigBody), 0644); errWrite != nil {
 			return nil, errWrite
 		}
@@ -88,6 +93,10 @@ func (uc *ConfigUseCase) GetConfig(ctx context.Context, id string, game string, 
 	}
 
 	config := v.(*domain.Config)
+
+	if errDir := os.MkdirAll(filepath.Dir(localPath), 0755); errDir != nil {
+		return nil, errDir
+	}
 
 	if errWrite := os.WriteFile(localPath, []byte(config.ConfigBody), 0644); errWrite != nil {
 		return nil, errWrite
