@@ -70,12 +70,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.statusMessage = string(msg)
 		m.isSuccess = true
 		return m, nil
+
 	case gRPCErrorMsg:
 		m.statusMessage = string(msg)
 		m.isSuccess = false
 		return m, nil
+
 	case tea.KeyPressMsg:
 		m.statusMessage = ""
+
+		switch msg.Key().Code {
+		case tea.KeyEnter:
+			return m.handleSelect()
+		case tea.KeyEsc, tea.KeyBackspace:
+			return m.handleBack()
+		}
+
 		switch msg.String() {
 		case "ctrl+c":
 			return m, tea.Quit
@@ -87,10 +97,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor < len(m.menuItems)-1 {
 				m.cursor++
 			}
-		case "esc", "backspace":
-			return m.handleBack()
-		case "enter":
-			return m.handleSelect()
 		}
 	}
 	return m, nil
@@ -153,10 +159,22 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 	case screenDotaConfigs, screenCS2Configs:
 		configID := m.menuItems[m.cursor]
 		gameType := "dota2"
-		author := "Yatoro"
+		author := "System"
+
+		switch configID {
+		case "dota2_yatoro_config":
+			configID = "dota2-quickcast-standard"
+		case "dota2_midone_config":
+			configID = "dota2-quickcast-standard"
+		case "cs2_s1mple_config":
+			configID = "cs2-default-pro"
+		case "cs2_donk_config":
+			configID = "cs2-alternative-fps"
+		}
+
 		if m.state == screenCS2Configs {
 			gameType = "cs2"
-			author = "s1mple"
+			author = "System"
 		}
 		return m, func() tea.Msg {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
