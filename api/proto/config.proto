@@ -10,6 +10,8 @@ service ConfigService {
     rpc SaveConfig (SaveConfigRequest) returns (SaveConfigResponse);
 
     rpc DeleteConfig (DeleteConfigRequest) returns (DeleteConfigResponse);
+
+    rpc ListConfig (ListConfigsRequest) returns (ListConfigsResponse);
 }
 
 message ConfigModel {
@@ -53,4 +55,12 @@ message DeleteConfigRequest {
 
 message DeleteConfigResponse {
     bool success = 1;
+}
+
+message ListConfigsRequest {
+    string game = 1;
+}
+
+message ListConfigsResponse {
+    repeated ConfigModel configs = 1;
 }

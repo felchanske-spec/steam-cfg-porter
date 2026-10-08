@@ -2,6 +2,7 @@ package usecase_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -223,6 +224,74 @@ func TestConfigUseCase_DeleteConfig(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.wantDeleted, deleted)
+			}
+		})
+	}
+}
+
+func TestConfigUseCase_ListConfigs(t *testing.T) {
+	ctx := context.Background()
+	gameFilter := "dota2"
+	dbErr := errors.New("connection pool exhausted")
+
+	expectedConfigs := []*domain.Config{
+		{
+			ID:             "dota2-quickcast-standard",
+			Game:           "dota2",
+			Name:           "Standard Preset",
+			AuthorNickName: "System",
+			ConfigBody:     "unbindall",
+		},
+	}
+
+	type mockBehavior func(pm *mocks.PostgresRepo)
+
+	tests := []struct {
+		name         string
+		mockBehavior mockBehavior
+		wantConfigs  []*domain.Config
+		wantErr      error
+	}{
+		{
+			name: "Success_ListConfigs",
+			mockBehavior: func(pm *mocks.PostgresRepo) {
+				pm.On("List", ctx, gameFilter).
+					Return(expectedConfigs, nil)
+			},
+			wantConfigs: expectedConfigs,
+			wantErr:     nil,
+		},
+		{
+			name: "Error_DatabaseFailure",
+			mockBehavior: func(pm *mocks.PostgresRepo) {
+				pm.On("List", ctx, gameFilter).
+					Return(nil, dbErr)
+			},
+			wantConfigs: nil,
+			wantErr:     dbErr,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockPostgres := mocks.NewPostgresRepo(t)
+			// Redis и Kafka в ListConfigs не используются, но нужны для конструктора
+			mockRedis := mocks.NewRedisRepo(t)
+			mockKafka := mocks.NewKafkaPublisher(t)
+			sfGroup := &singleflight.Group{}
+
+			tt.mockBehavior(mockPostgres)
+
+			uc := usecase.NewConfigUseCase(mockPostgres, mockRedis, mockKafka, sfGroup, "")
+
+			configs, err := uc.ListConfigs(ctx, gameFilter)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				assert.Nil(t, configs)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.wantConfigs, configs)
 			}
 		})
 	}

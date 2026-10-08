@@ -22,6 +22,7 @@ const (
 	ConfigService_GetConfig_FullMethodName    = "/proto.ConfigService/GetConfig"
 	ConfigService_SaveConfig_FullMethodName   = "/proto.ConfigService/SaveConfig"
 	ConfigService_DeleteConfig_FullMethodName = "/proto.ConfigService/DeleteConfig"
+	ConfigService_ListConfig_FullMethodName   = "/proto.ConfigService/ListConfig"
 )
 
 // ConfigServiceClient is the client API for ConfigService service.
@@ -31,6 +32,7 @@ type ConfigServiceClient interface {
 	GetConfig(ctx context.Context, in *GetConfigRequest, opts ...grpc.CallOption) (*GetConfigResponse, error)
 	SaveConfig(ctx context.Context, in *SaveConfigRequest, opts ...grpc.CallOption) (*SaveConfigResponse, error)
 	DeleteConfig(ctx context.Context, in *DeleteConfigRequest, opts ...grpc.CallOption) (*DeleteConfigResponse, error)
+	ListConfig(ctx context.Context, in *ListConfigsRequest, opts ...grpc.CallOption) (*ListConfigsResponse, error)
 }
 
 type configServiceClient struct {
@@ -71,6 +73,16 @@ func (c *configServiceClient) DeleteConfig(ctx context.Context, in *DeleteConfig
 	return out, nil
 }
 
+func (c *configServiceClient) ListConfig(ctx context.Context, in *ListConfigsRequest, opts ...grpc.CallOption) (*ListConfigsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListConfigsResponse)
+	err := c.cc.Invoke(ctx, ConfigService_ListConfig_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ConfigServiceServer is the server API for ConfigService service.
 // All implementations must embed UnimplementedConfigServiceServer
 // for forward compatibility.
@@ -78,6 +90,7 @@ type ConfigServiceServer interface {
 	GetConfig(context.Context, *GetConfigRequest) (*GetConfigResponse, error)
 	SaveConfig(context.Context, *SaveConfigRequest) (*SaveConfigResponse, error)
 	DeleteConfig(context.Context, *DeleteConfigRequest) (*DeleteConfigResponse, error)
+	ListConfig(context.Context, *ListConfigsRequest) (*ListConfigsResponse, error)
 	mustEmbedUnimplementedConfigServiceServer()
 }
 
@@ -96,6 +109,9 @@ func (UnimplementedConfigServiceServer) SaveConfig(context.Context, *SaveConfigR
 }
 func (UnimplementedConfigServiceServer) DeleteConfig(context.Context, *DeleteConfigRequest) (*DeleteConfigResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteConfig not implemented")
+}
+func (UnimplementedConfigServiceServer) ListConfig(context.Context, *ListConfigsRequest) (*ListConfigsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListConfig not implemented")
 }
 func (UnimplementedConfigServiceServer) mustEmbedUnimplementedConfigServiceServer() {}
 func (UnimplementedConfigServiceServer) testEmbeddedByValue()                       {}
@@ -172,6 +188,24 @@ func _ConfigService_DeleteConfig_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ConfigService_ListConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListConfigsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ConfigServiceServer).ListConfig(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ConfigService_ListConfig_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ConfigServiceServer).ListConfig(ctx, req.(*ListConfigsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ConfigService_ServiceDesc is the grpc.ServiceDesc for ConfigService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -190,6 +224,10 @@ var ConfigService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteConfig",
 			Handler:    _ConfigService_DeleteConfig_Handler,
+		},
+		{
+			MethodName: "ListConfig",
+			Handler:    _ConfigService_ListConfig_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
