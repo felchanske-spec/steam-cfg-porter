@@ -96,7 +96,7 @@ func (r *PostgresRepo) Delete(ctx context.Context, id string, userID int64) (boo
 
 func (r *PostgresRepo) List(ctx context.Context, game string) ([]*domain.Config, error) {
 	query := `
-	SELECT id, game, name, author_nickame, is_global, user_id, config_body, created_at
+	SELECT id, game, name, author_nickname, is_global, user_id, config_body, created_at
 	FROM configs
 	WHERE ($1 = '' OR game = $1)
 	ORDER BY created_at DESC`

@@ -80,7 +80,7 @@ func (g *ConfigGRPCServer) DeleteConfig(ctx context.Context, req *pb.DeleteConfi
 	}, nil
 }
 
-func (g *ConfigGRPCServer) ListConfigs(ctx context.Context, req *pb.ListConfigsRequest) (*pb.ListConfigsResponse, error) {
+func (g *ConfigGRPCServer) ListConfig(ctx context.Context, req *pb.ListConfigsRequest) (*pb.ListConfigsResponse, error) {
 	domainConfigs, err := g.uc.ListConfigs(ctx, req.GetGame())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get configs list: %v", err)

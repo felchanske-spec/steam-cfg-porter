@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"time"
 
 	pb "steam-cfg-portet/api/pb"
@@ -12,6 +15,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/caarlos0/env/v11"
+	"github.com/charmbracelet/bubbles/textinput"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -31,6 +35,10 @@ const (
 type gRPCSuccessMsg string
 type gRPCErrorMsg string
 
+type gRPCListResponseMsg struct {
+	configs []*pb.ConfigModel
+}
+
 type Config struct {
 	ConfigServiceGRPCAddr string `env:"CONFIG_SERVICE_GRPC_ADDR" envDefault:"localhost:50051"`
 }
@@ -44,14 +52,38 @@ type model struct {
 	isSuccess      bool
 	windowStyle    lipgloss.Style
 	client         pb.ConfigServiceClient
+	targetCfgDir   string
+	txtInput       textinput.Model
+}
+
+func fetchConfigsListCmd(client pb.ConfigServiceClient, game string) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+
+		resp, err := client.ListConfig(ctx, &pb.ListConfigsRequest{Game: game})
+		if err != nil {
+			return gRPCErrorMsg(fmt.Sprintf("Failed to load list: %v", grpc.ErrorDesc(err)))
+		}
+
+		return gRPCListResponseMsg{configs: resp.GetConfigs()}
+	}
 }
 
 func initialModel(client pb.ConfigServiceClient) model {
+	ti := textinput.New()
+	ti.Placeholder = "Enter new config name..."
+	ti.Focus()
+	ti.CharLimit = 50
+	ti.Width = 30
+
 	return model{
-		state:     screenHome,
-		cursor:    0,
-		menuItems: []string{"Select config", "Save config", "My saves", "Exit"},
-		client:    client,
+		state:        screenHome,
+		cursor:       0,
+		menuItems:    []string{"Select config", "Save config", "My saves", "Exit"},
+		client:       client,
+		targetCfgDir: "./tmp/steam_configs",
+		txtInput:     ti,
 		windowStyle: lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("240")).
@@ -66,6 +98,21 @@ func (m model) Init() tea.Cmd {
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case gRPCListResponseMsg:
+		m.statusMessage = ""
+		if len(msg.configs) == 0 {
+			m.menuItems = []string{"No configs available in cloud"}
+			m.cursor = 0
+			return m, nil
+		}
+
+		m.menuItems = make([]string, 0, len(msg.configs))
+		for _, cfg := range msg.configs {
+			itemStr := fmt.Sprintf("%s (Author: %s) [ID: %s]", cfg.GetName(), cfg.GetAuthorNickname(), cfg.GetId())
+			m.menuItems = append(m.menuItems, itemStr)
+		}
+		m.cursor = 0
+		return m, nil
 	case gRPCSuccessMsg:
 		m.statusMessage = string(msg)
 		m.isSuccess = true
@@ -78,6 +125,36 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		m.statusMessage = ""
+
+		if m.state == screenMakeConfig {
+			switch msg.Key().Code {
+			case tea.KeyEnter:
+				return m.handleSelect()
+			case tea.KeyEsc:
+				m.state = screenHome
+				m.menuItems = []string{"Select config", "Save config", "My saves", "Exit"}
+				m.cursor = 0
+				return m, nil
+			}
+
+			if msg.Key().Code == tea.KeyBackspace {
+				currentVal := m.txtInput.Value()
+				if len(currentVal) > 0 {
+					m.txtInput.SetValue(currentVal[:len(currentVal)-1])
+				}
+				return m, nil
+			}
+
+			inputStr := msg.Text
+
+			if inputStr != "" && len(m.txtInput.Value()) < m.txtInput.CharLimit {
+				m.txtInput.SetValue(m.txtInput.Value() + inputStr)
+			}
+
+			m.txtInput.SetCursor(len(m.txtInput.Value()))
+
+			return m, nil
+		}
 
 		switch msg.Key().Code {
 		case tea.KeyEnter:
@@ -137,6 +214,8 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 		case 1:
 			m.state = screenMakeConfig
 			m.menuItems = []string{"Press Enter to Save", "Back"}
+			m.txtInput.Focus()
+			m.txtInput.SetValue("")
 		case 2:
 			m.state = screenMyConfigs
 			m.menuItems = []string{"dota2_stariy_bog_config", "dota2_yatoro_config", "cs2_s1mple_config", "cs2_donk_config"}
@@ -146,43 +225,49 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 		m.cursor = 0
 
 	case screenChooseGame:
-		switch m.cursor {
-		case 0:
+		selectedGame := m.menuItems[m.cursor]
+		switch selectedGame {
+		case "Dota 2":
 			m.state = screenDotaConfigs
-			m.menuItems = []string{"dota2_yatoro_config", "dota2_midone_config"}
-		case 1:
+			m.targetCfgDir = detectSteamPath("dota2")
+			m.statusMessage = "Loading configs from cloud..."
+			return m, fetchConfigsListCmd(m.client, "dota2")
+		case "CS 2":
 			m.state = screenCS2Configs
-			m.menuItems = []string{"cs2_s1mple_config", "cs2_donk_config"}
+			m.targetCfgDir = detectSteamPath("cs2")
+			m.statusMessage = "Loading configs from cloud..."
+			return m, fetchConfigsListCmd(m.client, "cs2")
 		}
 		m.cursor = 0
 
 	case screenDotaConfigs, screenCS2Configs:
-		configID := m.menuItems[m.cursor]
-		gameType := "dota2"
-		author := "System"
-
-		switch configID {
-		case "dota2_yatoro_config":
-			configID = "dota2-quickcast-standard"
-		case "dota2_midone_config":
-			configID = "dota2-quickcast-standard"
-		case "cs2_s1mple_config":
-			configID = "cs2-default-pro"
-		case "cs2_donk_config":
-			configID = "cs2-alternative-fps"
+		if len(m.menuItems) == 0 || m.menuItems[0] == "No configs available in cloud" {
+			return m, nil
 		}
 
+		selectedItem := m.menuItems[m.cursor]
+
+		idStart := strings.Index(selectedItem, "[")
+		idEnd := strings.Index(selectedItem, "]")
+		if idStart == -1 || idEnd == -1 {
+			return m, nil
+		}
+		configID := selectedItem[idStart+1 : idEnd]
+
+		gameType := "dota2"
 		if m.state == screenCS2Configs {
 			gameType = "cs2"
-			author = "System"
 		}
+
+		m.statusMessage = "Installing configuration..."
+
 		return m, func() tea.Msg {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()
+
 			_, err := m.client.GetConfig(ctx, &pb.GetConfigRequest{
-				ConfigId:       configID,
-				Game:           gameType,
-				AuthorNickname: author,
+				ConfigId: configID,
+				Game:     gameType,
 			})
 			if err != nil {
 				return gRPCErrorMsg(fmt.Sprintf("Download failed: %v", grpc.ErrorDesc(err)))
@@ -191,18 +276,29 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 		}
 
 	case screenMakeConfig:
-		if m.cursor == 1 {
-			return m.handleBack()
+		chosenName := m.txtInput.Value()
+
+		if chosenName == "" {
+			m.statusMessage = "Error: Config name cannot be empty!"
+			m.isSuccess = false
+			return m, nil
 		}
+
+		m.statusMessage = "Uploading configuration to cloud..."
+
 		return m, func() tea.Msg {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()
+
 			_, err := m.client.SaveConfig(ctx, &pb.SaveConfigRequest{
 				Game:           "dota2",
-				Name:           "custom_preset",
-				AuthorNickname: "leha",
-				UserId:         12345,
+				Name:           chosenName,
+				AuthorNickname: "System",
+				IsGlobal:       true,
+				UserId:         1,
+				ConfigBody:     "unbindall; sensitivity 1.5;",
 			})
+
 			if err != nil {
 				return gRPCErrorMsg(fmt.Sprintf("Save failed: %v", grpc.ErrorDesc(err)))
 			}
@@ -271,12 +367,10 @@ func (m model) View() tea.View {
 		s += "CS 2 CONFIGS     STEP 02\n\n"
 		s += m.renderMenu()
 	case screenMakeConfig:
-		s += lipgloss.NewStyle().Foreground(lipgloss.Color("76")).Render("create://new\n\n")
-		s += "MAKE A CONFIG PRESET\n\n"
-		s += "🔹 Game: dota2\n"
-		s += "🔹 Name: custom_preset\n"
-		s += "🔹 Author: leha\n\n"
-		s += m.renderMenu()
+		s += "⌨️  [ CREATE NEW CLOUD CONFIG ]\n\n"
+		s += "Enter a unique name for your preset and press Enter:\n\n"
+		s += m.txtInput.View() + "\n\n"
+		s += "\n[ Esc - Go Back ]"
 	case screenMyConfigs:
 		s += lipgloss.NewStyle().Foreground(lipgloss.Color("135")).Render("registry://saves\n\n")
 		s += "MY CONFIGS (SAVES)\n\n"
@@ -318,6 +412,44 @@ func (m model) renderMenu() string {
 		}
 	}
 	return s
+}
+
+func detectSteamPath(game string) string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "./tmp/steam_configs"
+	}
+
+	var basePath string
+
+	switch runtime.GOOS {
+	case "darwin":
+		basePath = filepath.Join(homeDir, "Library", "Application Support", "Steam", "steamapps", "common")
+	case "windows":
+		basePath = "C:\\Program Files (x86)\\Steam\\steamapps\\common"
+	case "linux":
+		basePath = filepath.Join(homeDir, ".local", "share", "Steam", "steamapps", "common")
+	default:
+		return "./tmp/steam_configs"
+	}
+
+	var gameSubPath string
+	switch game {
+	case "dota2":
+		gameSubPath = filepath.Join("dota 2 beta", "game", "dota", "cfg")
+	case "cs2":
+		gameSubPath = filepath.Join("Counter-Strike Global Offensive", "game", "csgo", "cfg")
+	default:
+		return "./tmp/steam_configs"
+	}
+
+	fullPath := filepath.Join(basePath, gameSubPath)
+
+	if _, err := os.Stat(fullPath); err == nil {
+		return fullPath
+	}
+
+	return ""
 }
 
 func main() {
