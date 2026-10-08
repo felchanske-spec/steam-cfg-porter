@@ -93,3 +93,40 @@ func (r *PostgresRepo) Delete(ctx context.Context, id string, userID int64) (boo
 
 	return result.RowsAffected() > 0, nil
 }
+
+func (r *PostgresRepo) List(ctx context.Context, game string) ([]*domain.Config, error) {
+	query := `
+	SELECT id, game, name, author_nickame, is_global, user_id, config_body, created_at
+	FROM configs
+	WHERE ($1 = '' OR game = $1)
+	ORDER BY created_at DESC`
+
+	rows, err := r.pool.Query(ctx, query, game)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute list query: %v", err)
+	}
+	defer rows.Close()
+
+	var configs []*domain.Config
+	for rows.Next() {
+		cfg := &domain.Config{}
+		err := rows.Scan(
+			&cfg.ID,
+			&cfg.Game,
+			&cfg.Name,
+			&cfg.AuthorNickName,
+			&cfg.IsGlobal,
+			&cfg.UserID,
+			&cfg.ConfigBody,
+			&cfg.CreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to san config row: %v", err)
+		}
+		configs = append(configs, cfg)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during rows iteration: %v", err)
+	}
+	return configs, nil
+}

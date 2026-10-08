@@ -449,6 +449,94 @@ func (x *DeleteConfigResponse) GetSuccess() bool {
 	return false
 }
 
+type ListConfigsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Game          string                 `protobuf:"bytes,1,opt,name=game,proto3" json:"game,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListConfigsRequest) Reset() {
+	*x = ListConfigsRequest{}
+	mi := &file_config_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListConfigsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListConfigsRequest) ProtoMessage() {}
+
+func (x *ListConfigsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_config_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListConfigsRequest.ProtoReflect.Descriptor instead.
+func (*ListConfigsRequest) Descriptor() ([]byte, []int) {
+	return file_config_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ListConfigsRequest) GetGame() string {
+	if x != nil {
+		return x.Game
+	}
+	return ""
+}
+
+type ListConfigsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Configs       []*ConfigModel         `protobuf:"bytes,1,rep,name=configs,proto3" json:"configs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListConfigsResponse) Reset() {
+	*x = ListConfigsResponse{}
+	mi := &file_config_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListConfigsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListConfigsResponse) ProtoMessage() {}
+
+func (x *ListConfigsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_config_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListConfigsResponse.ProtoReflect.Descriptor instead.
+func (*ListConfigsResponse) Descriptor() ([]byte, []int) {
+	return file_config_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ListConfigsResponse) GetConfigs() []*ConfigModel {
+	if x != nil {
+		return x.Configs
+	}
+	return nil
+}
+
 var File_config_proto protoreflect.FileDescriptor
 
 const file_config_proto_rawDesc = "" +
@@ -484,12 +572,18 @@ const file_config_proto_rawDesc = "" +
 	"\tconfig_id\x18\x01 \x01(\tR\bconfigId\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\x03R\x06userId\"0\n" +
 	"\x14DeleteConfigResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess2\xdb\x01\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"(\n" +
+	"\x12ListConfigsRequest\x12\x12\n" +
+	"\x04game\x18\x01 \x01(\tR\x04game\"C\n" +
+	"\x13ListConfigsResponse\x12,\n" +
+	"\aconfigs\x18\x01 \x03(\v2\x12.proto.ConfigModelR\aconfigs2\xa0\x02\n" +
 	"\rConfigService\x12>\n" +
 	"\tGetConfig\x12\x17.proto.GetConfigRequest\x1a\x18.proto.GetConfigResponse\x12A\n" +
 	"\n" +
 	"SaveConfig\x12\x18.proto.SaveConfigRequest\x1a\x19.proto.SaveConfigResponse\x12G\n" +
-	"\fDeleteConfig\x12\x1a.proto.DeleteConfigRequest\x1a\x1b.proto.DeleteConfigResponseB\x1cZ\x1asteam-cfg-porter/api/pb;pbb\x06proto3"
+	"\fDeleteConfig\x12\x1a.proto.DeleteConfigRequest\x1a\x1b.proto.DeleteConfigResponse\x12C\n" +
+	"\n" +
+	"ListConfig\x12\x19.proto.ListConfigsRequest\x1a\x1a.proto.ListConfigsResponseB\x1cZ\x1asteam-cfg-porter/api/pb;pbb\x06proto3"
 
 var (
 	file_config_proto_rawDescOnce sync.Once
@@ -503,7 +597,7 @@ func file_config_proto_rawDescGZIP() []byte {
 	return file_config_proto_rawDescData
 }
 
-var file_config_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_config_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_config_proto_goTypes = []any{
 	(*ConfigModel)(nil),          // 0: proto.ConfigModel
 	(*GetConfigRequest)(nil),     // 1: proto.GetConfigRequest
@@ -512,20 +606,25 @@ var file_config_proto_goTypes = []any{
 	(*SaveConfigResponse)(nil),   // 4: proto.SaveConfigResponse
 	(*DeleteConfigRequest)(nil),  // 5: proto.DeleteConfigRequest
 	(*DeleteConfigResponse)(nil), // 6: proto.DeleteConfigResponse
+	(*ListConfigsRequest)(nil),   // 7: proto.ListConfigsRequest
+	(*ListConfigsResponse)(nil),  // 8: proto.ListConfigsResponse
 }
 var file_config_proto_depIdxs = []int32{
 	0, // 0: proto.GetConfigResponse.config:type_name -> proto.ConfigModel
-	1, // 1: proto.ConfigService.GetConfig:input_type -> proto.GetConfigRequest
-	3, // 2: proto.ConfigService.SaveConfig:input_type -> proto.SaveConfigRequest
-	5, // 3: proto.ConfigService.DeleteConfig:input_type -> proto.DeleteConfigRequest
-	2, // 4: proto.ConfigService.GetConfig:output_type -> proto.GetConfigResponse
-	4, // 5: proto.ConfigService.SaveConfig:output_type -> proto.SaveConfigResponse
-	6, // 6: proto.ConfigService.DeleteConfig:output_type -> proto.DeleteConfigResponse
-	4, // [4:7] is the sub-list for method output_type
-	1, // [1:4] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // 1: proto.ListConfigsResponse.configs:type_name -> proto.ConfigModel
+	1, // 2: proto.ConfigService.GetConfig:input_type -> proto.GetConfigRequest
+	3, // 3: proto.ConfigService.SaveConfig:input_type -> proto.SaveConfigRequest
+	5, // 4: proto.ConfigService.DeleteConfig:input_type -> proto.DeleteConfigRequest
+	7, // 5: proto.ConfigService.ListConfig:input_type -> proto.ListConfigsRequest
+	2, // 6: proto.ConfigService.GetConfig:output_type -> proto.GetConfigResponse
+	4, // 7: proto.ConfigService.SaveConfig:output_type -> proto.SaveConfigResponse
+	6, // 8: proto.ConfigService.DeleteConfig:output_type -> proto.DeleteConfigResponse
+	8, // 9: proto.ConfigService.ListConfig:output_type -> proto.ListConfigsResponse
+	6, // [6:10] is the sub-list for method output_type
+	2, // [2:6] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_config_proto_init() }
@@ -539,7 +638,7 @@ func file_config_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_config_proto_rawDesc), len(file_config_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

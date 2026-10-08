@@ -80,6 +80,22 @@ func (g *ConfigGRPCServer) DeleteConfig(ctx context.Context, req *pb.DeleteConfi
 	}, nil
 }
 
+func (g *ConfigGRPCServer) ListConfigs(ctx context.Context, req *pb.ListConfigsRequest) (*pb.ListConfigsResponse, error) {
+	domainConfigs, err := g.uc.ListConfigs(ctx, req.GetGame())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get configs list: %v", err)
+	}
+
+	pbConfigs := make([]*pb.ConfigModel, 0, len(domainConfigs))
+	for _, cfg := range domainConfigs {
+		pbConfigs = append(pbConfigs, mapDomainToPB(cfg))
+	}
+
+	return &pb.ListConfigsResponse{
+		Configs: pbConfigs,
+	}, nil
+}
+
 func mapDomainToPB(d *domain.Config) *pb.ConfigModel {
 	if d == nil {
 		return nil

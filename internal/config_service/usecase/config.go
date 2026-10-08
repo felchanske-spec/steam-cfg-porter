@@ -175,3 +175,12 @@ func (uc *ConfigUseCase) DeleteConfig(ctx context.Context, id string, userID int
 
 	return true, nil
 }
+
+func (uc *ConfigUseCase) ListConfigs(ctx context.Context, game string) ([]*domain.Config, error) {
+	configs, err := uc.pgRepo.List(ctx, game)
+	if err != nil {
+		log.Printf("[UseCase] Failed to fetch configs list: %v", err)
+		return nil, err
+	}
+	return configs, nil
+}

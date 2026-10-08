@@ -48,12 +48,14 @@ type UseCase interface {
 	GetConfig(ctx context.Context, id string, game string, authorNickname string) (*Config, error)
 	SaveMyConfig(ctx context.Context, cfg *Config) (string, error)
 	DeleteConfig(ctx context.Context, id string, userID int64) (bool, error)
+	ListConfigs(ctx context.Context, game string) ([]*Config, error)
 }
 
 type PostgresRepo interface {
 	Get(ctx context.Context, id string, game string, authorNickname string) (*Config, error)
 	Save(ctx context.Context, cfg *Config) (string, error)
 	Delete(ctx context.Context, id string, userID int64) (bool, error)
+	List(ctx context.Context, game string) ([]*Config, error)
 }
 
 type RedisRepo interface {
