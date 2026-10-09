@@ -7,22 +7,28 @@ import (
 )
 
 type KafkaConsumer struct {
-	reader *kafka.Reader
+	SavedReader     *kafka.Reader
+	InstalledReader *kafka.Reader
+	DeletedReader   *kafka.Reader
 }
 
-func NewKafkaConsumer(reader *kafka.Reader) *KafkaConsumer {
+func NewKafkaConsumer(saved, installed, deleted *kafka.Reader) *KafkaConsumer {
 	return &KafkaConsumer{
-		reader: reader,
+		SavedReader:     saved,
+		InstalledReader: installed,
+		DeletedReader:   deleted,
 	}
 }
 
-func (k *KafkaConsumer) GetReader() *kafka.Reader {
-	return k.reader
-}
-
 func (k *KafkaConsumer) Close() error {
-	if err := k.reader.Close(); err != nil {
-		return fmt.Errorf("failed to close kafka reader: %v", err)
+	if err := k.SavedReader.Close(); err != nil {
+		return fmt.Errorf("failed to close saved reader: %v", err)
+	}
+	if err := k.InstalledReader.Close(); err != nil {
+		return fmt.Errorf("failed to close installed reader: %v", err)
+	}
+	if err := k.DeletedReader.Close(); err != nil {
+		return fmt.Errorf("failed to close deleted reader: %v", err)
 	}
 	return nil
 }

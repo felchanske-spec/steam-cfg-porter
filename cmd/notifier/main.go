@@ -15,7 +15,9 @@ import (
 )
 
 type Config struct {
-	KafkaBroker string `env:"KAFKA_BROKER,required"`
+	KafkaBroker      string `env:"KAFKA_BROKER,required"`
+	TelegramBotToken string `env:"TELEGRAM_BOT_TOKEN,required"`
+	TelegramChatID   string `env:"TELEGRAM_CHAT_ID,required"`
 }
 
 func main() {
@@ -28,12 +30,17 @@ func main() {
 	}
 	log.Println("[Main] Configuration loaded successfully")
 
-	kafkaReader := kafka.InitKafkaConsumer(cfg.KafkaBroker)
-	defer kafkaReader.Close()
+	savedReader := kafka.InitSavedConsumer(cfg.KafkaBroker)
+	installedReader := kafka.InitInstalledConsumer(cfg.KafkaBroker)
+	deletedReader := kafka.InitDeletedConsumer(cfg.KafkaBroker)
 
-	kafkaRepo := kafka.NewKafkaConsumer(kafkaReader)
+	defer savedReader.Close()
+	defer installedReader.Close()
+	defer deletedReader.Close()
 
-	notifierUseCase := usecase.NewNotifierUseCase()
+	kafkaRepo := kafka.NewKafkaConsumer(savedReader, installedReader, deletedReader)
+
+	notifierUseCase := usecase.NewNotifierUseCase(cfg.TelegramBotToken, cfg.TelegramChatID)
 	eventHandler := events.NewEventHandler(notifierUseCase, kafkaRepo)
 
 	go func() {

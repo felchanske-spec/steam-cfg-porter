@@ -9,7 +9,7 @@ import (
 )
 
 func TestNotifierUseCase_OnConfigInstalled(t *testing.T) {
-	uc := NewNotifierUseCase()
+	uc := NewNotifierUseCase("", "")
 	ctx := context.Background()
 
 	t.Run("Success_LogInstalledEvent", func(t *testing.T) {
@@ -21,7 +21,8 @@ func TestNotifierUseCase_OnConfigInstalled(t *testing.T) {
 		}
 
 		err := uc.OnConfigInstalled(ctx, event)
-		assert.NoError(t, err, "should not return an error when processing a valid event")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "telegram credentials are empty")
 	})
 
 	t.Run("Safe_NilEvent", func(t *testing.T) {
@@ -31,7 +32,7 @@ func TestNotifierUseCase_OnConfigInstalled(t *testing.T) {
 }
 
 func TestNotifierUseCase_OnConfigSaved(t *testing.T) {
-	uc := NewNotifierUseCase()
+	uc := NewNotifierUseCase("", "")
 	ctx := context.Background()
 
 	t.Run("Success_LogSavedEvent", func(t *testing.T) {
@@ -42,12 +43,13 @@ func TestNotifierUseCase_OnConfigSaved(t *testing.T) {
 		}
 
 		err := uc.OnConfigSaved(ctx, event)
-		assert.NoError(t, err)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "telegram credentials are empty")
 	})
 }
 
 func TestNotifierUseCase_OnConfigDeleted(t *testing.T) {
-	uc := NewNotifierUseCase()
+	uc := NewNotifierUseCase("", "")
 	ctx := context.Background()
 
 	t.Run("Success_LogDeletedEvent", func(t *testing.T) {
@@ -58,6 +60,7 @@ func TestNotifierUseCase_OnConfigDeleted(t *testing.T) {
 		}
 
 		err := uc.OnConfigDeleted(ctx, event)
-		assert.NoError(t, err)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "telegram credentials are empty")
 	})
 }
