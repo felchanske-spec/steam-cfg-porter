@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"steam-cfg-portet/internal/config_service/domain"
 
 	"github.com/segmentio/kafka-go"
@@ -44,6 +45,7 @@ func (k *KafkaPublisher) PublishSaved(ctx context.Context, event *domain.ConfigS
 		Value: eventBytes,
 	})
 	if err != nil {
+		log.Printf("[KAFKA-ERROR] Failed to write message: %v", err)
 		return fmt.Errorf("kafka publish saved failed: %v", err)
 	}
 	return nil

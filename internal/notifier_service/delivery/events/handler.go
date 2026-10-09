@@ -22,40 +22,96 @@ func NewEventHandler(uc domain.UseCase, consumer *kafka.KafkaConsumer) *EventHan
 }
 
 func (h *EventHandler) Run(ctx context.Context) error {
+	log.Println("[Handler] Multi-topic worker engine started with individual manual-commit guarantees")
+
+	go h.runSavedLoop(ctx)
+	go h.runInstalledLoop(ctx)
+	go h.runDeletedLoop(ctx)
+
+	<-ctx.Done()
+	return nil
+}
+
+func (h *EventHandler) runSavedLoop(ctx context.Context) {
+	reader := h.consumer.SavedReader
 	for {
-		msg, err := h.consumer.GetReader().ReadMessage(ctx)
+		msg, err := reader.FetchMessage(ctx)
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
-				return nil
+				return
 			}
-			log.Printf("[Handler] Error reading message from Kafka: %v", err)
+			log.Printf("[Saved-Loop] Fetch error: %v", err)
 			continue
 		}
 
-		switch msg.Topic {
-		case "config-installed":
-			event := &domain.ConfigInstalledEvent{}
-			if err := json.Unmarshal(msg.Value, event); err != nil {
-				log.Printf("[Handler] Failed to unmarshal installed event: %v", err)
-				continue
-			}
-			_ = h.uc.OnConfigInstalled(ctx, event)
-
-		case "config-saved":
-			event := &domain.ConfigSavedEvent{}
-			if err := json.Unmarshal(msg.Value, event); err != nil {
-				log.Printf("[Handler] Failed to unmarshal saved event: %v", err)
-				continue
-			}
-			_ = h.uc.OnConfigSaved(ctx, event)
-
-		case "config-deleted":
-			event := &domain.ConfigDeletedEvent{}
-			if err := json.Unmarshal(msg.Value, event); err != nil {
-				log.Printf("[Handler] Failed to unmarshal deleted event: %v", err)
-				continue
-			}
-			_ = h.uc.OnConfigDeleted(ctx, event)
+		event := &domain.ConfigSavedEvent{}
+		if err := json.Unmarshal(msg.Value, event); err != nil {
+			log.Printf("[Saved-Loop] Unmarshal error: %v", err)
+			_ = reader.CommitMessages(ctx, msg)
+			continue
 		}
+
+		if err := h.uc.OnConfigSaved(ctx, event); err != nil {
+			log.Printf("[Saved-Loop] Notification delivery failed, retrying: %v", err)
+			continue
+		}
+
+		_ = reader.CommitMessages(ctx, msg)
+	}
+}
+
+func (h *EventHandler) runInstalledLoop(ctx context.Context) {
+	reader := h.consumer.InstalledReader
+	for {
+		msg, err := reader.FetchMessage(ctx)
+		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				return
+			}
+			log.Printf("[Installed-Loop] Fetch error: %v", err)
+			continue
+		}
+
+		event := &domain.ConfigInstalledEvent{}
+		if err := json.Unmarshal(msg.Value, event); err != nil {
+			log.Printf("[Installed-Loop] Unmarshal error: %v", err)
+			_ = reader.CommitMessages(ctx, msg)
+			continue
+		}
+
+		if err := h.uc.OnConfigInstalled(ctx, event); err != nil {
+			log.Printf("[Installed-Loop] Notification delivery failed, retrying: %v", err)
+			continue
+		}
+
+		_ = reader.CommitMessages(ctx, msg)
+	}
+}
+
+func (h *EventHandler) runDeletedLoop(ctx context.Context) {
+	reader := h.consumer.DeletedReader
+	for {
+		msg, err := reader.FetchMessage(ctx)
+		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				return
+			}
+			log.Printf("[Deleted-Loop] Fetch error: %v", err)
+			continue
+		}
+
+		event := &domain.ConfigDeletedEvent{}
+		if err := json.Unmarshal(msg.Value, event); err != nil {
+			log.Printf("[Deleted-Loop] Unmarshal error: %v", err)
+			_ = reader.CommitMessages(ctx, msg)
+			continue
+		}
+
+		if err := h.uc.OnConfigDeleted(ctx, event); err != nil {
+			log.Printf("[Deleted-Loop] Notification delivery failed, retrying: %v", err)
+			continue
+		}
+
+		_ = reader.CommitMessages(ctx, msg)
 	}
 }
