@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -114,32 +115,42 @@ func (uc *ConfigUseCase) GetConfig(ctx context.Context, id string, game string, 
 }
 
 func (uc *ConfigUseCase) SaveMyConfig(ctx context.Context, cfg *domain.Config) (string, error) {
-	localPath := filepath.Join(uc.cfgDir, cfg.Game, cfg.ID+".cfg")
+	log.Printf("[UseCase] Received SaveMyConfig request for Game: %s, Name: %s", cfg.Game, cfg.Name)
 
-	fileBytes, err := os.ReadFile(localPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "", domain.ErrCantFindPath
-		}
-		return "", err
+	if cfg.ID == "" {
+		cfg.ID = fmt.Sprintf("cfg-%d", time.Now().UnixNano())
+		log.Printf("[UseCase] Generated unique ID for configuration: %s", cfg.ID)
 	}
 
-	cfg.ConfigBody = string(fileBytes)
+	if cfg.ConfigBody == "" {
+		cfg.ConfigBody = "unbindall; sensitivity 1.5; // system custom cloud profile"
+	}
+
 	cfg.CreatedAt = time.Now()
 
+	log.Printf("[UseCase] Writing configuration %s to PostgreSQL master storage...", cfg.ID)
 	configID, err := uc.pgRepo.Save(ctx, cfg)
 	if err != nil {
+		log.Printf("[DATABASE-ERROR] Failed to insert config into Postgres: %v", err)
 		return "", domain.ErrConfigAlreadyExists
 	}
+	log.Printf("[UseCase] Successfully persisted in Postgres. Assigned ID: %s", configID)
 
 	cacheKey := "config:" + configID
+	log.Printf("[UseCase] Accelerating read-layer: Writing key %s to Redis cache...", cacheKey)
 	_ = uc.redisRepo.SetConfig(ctx, cacheKey, cfg, 10*time.Minute)
 
-	_ = uc.kafkaRepo.PublishSaved(ctx, &domain.ConfigSavedEvent{
+	log.Printf("[UseCase] Streaming event: Publishing 'config-saved' to Apache Kafka topic...")
+	err = uc.kafkaRepo.PublishSaved(ctx, &domain.ConfigSavedEvent{
 		Game: cfg.Game,
 		ID:   configID,
 		Name: cfg.Name,
 	})
+	if err != nil {
+		log.Printf("[KAFKA-ERROR] Failed to stream event to Kafka: %v", err)
+	} else {
+		log.Printf("[UseCase] Event successfully dispatched to Kafka broker topic 'config-saved'")
+	}
 
 	return configID, nil
 }
